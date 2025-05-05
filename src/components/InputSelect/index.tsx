@@ -1,5 +1,5 @@
 import Downshift from "downshift"
-import { useCallback, useState } from "react"
+import { useCallback, useState , useRef , useEffect } from "react"
 import classNames from "classnames"
 import { DropdownPosition, GetDropdownPositionFn, InputSelectOnChange, InputSelectProps } from "./types"
 
@@ -17,6 +17,24 @@ export function InputSelect<TItem>({
     top: 0,
     left: 0,
   })
+  const inputRef = useRef<HTMLDivElement | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen ] = useState(false)
+  const updateDropdownPosition = useCallback(() => {
+    if (inputRef.current) {
+      setDropdownPosition(getDropdownPosition(inputRef.current))
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isDropdownOpen) return
+    updateDropdownPosition()
+    window.addEventListener("scroll", updateDropdownPosition)
+    window.addEventListener("resize", updateDropdownPosition)
+    return () => {
+      window.removeEventListener("scroll", updateDropdownPosition)
+      window.removeEventListener("resize", updateDropdownPosition)
+    }
+  }, [isDropdownOpen, updateDropdownPosition])
 
   const onChange = useCallback<InputSelectOnChange<TItem>>(
     (selectedItem) => {
@@ -30,12 +48,20 @@ export function InputSelect<TItem>({
     [consumerOnChange]
   )
 
+ 
+
+
   return (
     <Downshift<TItem>
       id="RampSelect"
       onChange={onChange}
       selectedItem={selectedValue}
       itemToString={(item) => (item ? parseItem(item).label : "")}
+      onStateChange={(changes) => {
+        if (Object.prototype.hasOwnProperty.call(changes, "isOpen")) {
+          setIsDropdownOpen(!!changes.isOpen)
+        }
+      }}
     >
       {({
         getItemProps,
@@ -49,7 +75,6 @@ export function InputSelect<TItem>({
       }) => {
         const toggleProps = getToggleButtonProps()
         const parsedSelectedItem = selectedItem === null ? null : parseItem(selectedItem)
-
         return (
           <div className="RampInputSelect--root">
             <label className="RampText--s RampText--hushed" {...getLabelProps()}>
@@ -59,7 +84,7 @@ export function InputSelect<TItem>({
             <div
               className="RampInputSelect--input"
               onClick={(event) => {
-                setDropdownPosition(getDropdownPosition(event.target))
+                updateDropdownPosition()
                 toggleProps.onClick(event)
               }}
             >
